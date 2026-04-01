@@ -151,7 +151,7 @@ CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get(
         'CORS_ALLOWED_ORIGINS',
-        'https://ecc-lab-attendance-frontend.vercel.app'
+        "https://ecc-lab-attendance-frontend.vercel.app"
     ).split(',')
     if origin.strip()
 ]
@@ -164,7 +164,7 @@ CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get(
         'CSRF_TRUSTED_ORIGINS',
-        'https://ecc-lab-attendance-frontend.vercel.app'
+        "https://ecc-lab-attendance-frontend.vercel.app"
     ).split(',')
     if origin.strip()
 ]
