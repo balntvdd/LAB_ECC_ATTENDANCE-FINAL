@@ -32,7 +32,7 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('1', 'true', 'yes')
 
 ALLOWED_HOSTS = [
     host.strip()
-    for host in os.environ.get('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
+    for host in os.environ.get('DJANGO_ALLOWED_HOSTS', 'https://ecc-lab-attendance-frontend.vercel.app').split(',')
     if host.strip()
 ]
 
