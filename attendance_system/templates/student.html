@@ -1,0 +1,204 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECC Attendance | Student Portal</title>
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+</head>
+<body class="theme-student">
+    <main class="student-shell">
+        <section class="student-hero">
+            <p class="student-tagline">Advancing IT Through Research, Publication, and Practical Innovation</p>
+            <div class="student-meta">ECC QR Attendance System</div>
+        </section>
+
+        <section class="student-card">
+            <div class="student-card-head">
+                <h1>Create and manage your attendance QR pass</h1>
+                <p>Register once, keep your private key, and generate a fresh session-based QR code when your teacher opens attendance.</p>
+            </div>
+
+            <div class="student-tabs">
+                <button class="student-tab is-active" data-tab-target="register-panel">
+                    <span>Register</span>
+                </button>
+                <button class="student-tab" data-tab-target="qr-panel">
+                    <span>Get QR Pass</span>
+                </button>
+            </div>
+
+            <section id="register-panel" class="student-panel is-active">
+                <form id="registerForm" class="student-form">
+                    <label class="form-block">
+                        <span>Student ID</span>
+                        <input type="text" id="student_id" maxlength="10" placeholder="Enter Student ID">
+                    </label>
+
+                    <label class="form-block">
+                        <span>Full Name</span>
+                        <input type="text" id="name" placeholder="Enter Full Name">
+                    </label>
+
+                    <label class="form-block">
+                        <span>Year and Section</span>
+                        <select id="section">
+                            <option value="">Select section</option>
+                            {% for section, label in sections %}
+                            <option value="{{ section }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+
+                    <p class="helper-text">One-time registration only. Use your official student record details.</p>
+                    <button type="submit" class="student-primary-btn">Register Student</button>
+                </form>
+
+                <div class="secret-box" id="privateKeyCard" hidden>
+                    <div class="secret-box-head">
+                        <div>
+                            <div class="box-label">Private Key</div>
+                            <h3>Save this key now</h3>
+                        </div>
+                        <button type="button" class="student-secondary-btn" id="copyPrivateKeyBtn">Copy Key</button>
+                    </div>
+                    <p>This key is required for QR generation. The system does not store your private key, so you must keep it yourself.</p>
+                    <textarea id="privateKeyDisplay" rows="5" readonly></textarea>
+                </div>
+            </section>
+
+            <section id="qr-panel" class="student-panel">
+                <form id="qrForm" class="student-form">
+                    <label class="form-block">
+                        <span>Session Code</span>
+                        <input type="text" id="session_code" placeholder="Enter Session Code">
+                    </label>
+
+                    <label class="form-block">
+                        <span>Student ID</span>
+                        <input type="text" id="qr_student_id" placeholder="Enter Student ID">
+                    </label>
+
+                    <label class="form-block">
+                        <span>Private Key</span>
+                        <textarea id="private_key" rows="4" placeholder="Paste your private key"></textarea>
+                    </label>
+
+                    <button type="submit" class="student-primary-btn">Generate QR Pass</button>
+                </form>
+
+                <div class="qr-pass-box" id="qrDisplay">
+                    <div class="qr-pass-empty">
+                        <div class="qr-pass-frame"></div>
+                        <p>Your downloadable QR pass will appear here.</p>
+                    </div>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <script>
+        const tabs = document.querySelectorAll("[data-tab-target]");
+        const panels = document.querySelectorAll(".student-panel");
+
+        tabs.forEach((tab) => {
+            tab.addEventListener("click", () => {
+                tabs.forEach((item) => item.classList.remove("is-active"));
+                panels.forEach((panel) => panel.classList.remove("is-active"));
+                tab.classList.add("is-active");
+                document.getElementById(tab.dataset.tabTarget).classList.add("is-active");
+            });
+        });
+
+        const registerForm = document.getElementById("registerForm");
+        const qrForm = document.getElementById("qrForm");
+        const privateKeyCard = document.getElementById("privateKeyCard");
+        const privateKeyDisplay = document.getElementById("privateKeyDisplay");
+
+        registerForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            const payload = {
+                student_id: document.getElementById("student_id").value.trim(),
+                name: document.getElementById("name").value.trim(),
+                section: document.getElementById("section").value,
+            };
+
+            const response = await fetch("/api/register/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                alert(data.error || "Registration failed");
+                return;
+            }
+
+            privateKeyCard.hidden = false;
+            privateKeyDisplay.value = data.private_key;
+            document.getElementById("qr_student_id").value = payload.student_id;
+            document.getElementById("private_key").value = data.private_key;
+            alert(data.private_key_hint || "Registration complete. Save your private key.");
+        });
+
+        document.getElementById("copyPrivateKeyBtn").addEventListener("click", async () => {
+            await navigator.clipboard.writeText(privateKeyDisplay.value);
+            alert("Private key copied.");
+        });
+
+        qrForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            const payload = {
+                session_code: document.getElementById("session_code").value.trim().toUpperCase(),
+                student_id: document.getElementById("qr_student_id").value.trim(),
+                private_key: document.getElementById("private_key").value.trim(),
+            };
+
+            const response = await fetch("/api/generate-qr/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                alert(data.error || "QR generation failed");
+                return;
+            }
+
+            const qrDisplay = document.getElementById("qrDisplay");
+            qrDisplay.innerHTML = "";
+
+            QRCode.toCanvas(data.raw_payload, { width: 280, margin: 2 }, (error, canvas) => {
+                if (error) {
+                    alert("Could not render QR.");
+                    return;
+                }
+
+                const wrap = document.createElement("div");
+                wrap.className = "qr-pass-ready";
+                wrap.appendChild(canvas);
+
+                const button = document.createElement("a");
+                button.className = "student-download-btn";
+                button.href = canvas.toDataURL("image/png");
+                button.download = `attendance-${data.student_id}-${data.session_code}.png`;
+                button.textContent = "Download QR Pass";
+                wrap.appendChild(button);
+
+                const note = document.createElement("p");
+                note.className = "qr-pass-note";
+                note.textContent = "Present this QR code to the teacher scanner for attendance.";
+                wrap.appendChild(note);
+
+                qrDisplay.appendChild(wrap);
+            });
+        });
+    </script>
+</body>
+</html>

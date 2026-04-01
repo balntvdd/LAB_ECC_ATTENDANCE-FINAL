@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Create Session</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="/static/style.css">
+        <style>
+            .card { max-width: 800px; margin: 40px auto; }
+        </style>
+</head>
+<body class="bg-light">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h3 class="card-title">Create Session</h3>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Section</label>
+                    <select id="section" class="form-select">
+                        <option value="">Select section</option>
+                        <option>WMD-1A</option>
+                        <option>WMD-1B</option>
+                        <option>WMD-1C</option>
+                        <option>WMD-2A</option>
+                        <option>WMD-2B</option>
+                        <option>WMD-2C</option>
+                        <option>BSIT-3A</option>
+                        <option>BSIT-3B</option>
+                        <option>BSIT-4A</option>
+                        <option>BSIT-4B</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Subject (optional)</label>
+                    <input class="form-control" type="text" id="subject" placeholder="Subject">
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Time-in start</label>
+                    <input class="form-control" type="time" id="time_in_start">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Time-in end</label>
+                    <input class="form-control" type="time" id="time_in_end">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Time-out start</label>
+                    <input class="form-control" type="time" id="time_out_start">
+                </div>
+
+                <div class="col-12 mt-3">
+                    <button class="btn btn-primary" onclick="createSession()">Create Session</button>
+                    <span id="created" class="ms-3 text-success"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    async function createSession() {
+            const section = document.getElementById('section').value;
+            const subject = document.getElementById('subject').value;
+            const time_in_start = document.getElementById('time_in_start').value;
+            const time_in_end = document.getElementById('time_in_end').value;
+            const time_out_start = document.getElementById('time_out_start').value;
+
+            if (!section || !time_in_start || !time_in_end || !time_out_start) {
+                    alert('Please fill required fields');
+                    return;
+            }
+
+            try {
+                    const res = await fetch('/api/start-session/', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ section, subject, time_in_start, time_in_end, time_out_start })
+                    });
+
+                    const data = await res.json();
+                    if (data.error) {
+                            alert(data.error);
+                            return;
+                    }
+
+                    document.getElementById('created').innerText = 'Created session: ' + data.session_code;
+
+            } catch (e) {
+                    console.error(e);
+                    alert('Server error');
+            }
+    }
+    </script>
+
+</body>
+</html>
