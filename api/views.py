@@ -13,8 +13,9 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime, parse_time
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import BasePermission, IsAuthenticated
+from rest_framework.permissions import BasePermission, IsAuthenticated, AllowAny
 from rest_framework.response import Response
+from django.views.decorators.csrf import csrf_exempt #add
 
 from .models import Attendance, SECTION_CHOICES, Session, Student
 from .utils import generate_keys, sign_message, verify_signature
@@ -267,8 +268,9 @@ def portal_dashboard_view(request):
 def student_portal_view(request):
     return render(request, "student.html", {"sections": SECTION_CHOICES})
 
-
+@csrf_exempt
 @api_view(["POST"])
+@permission_classes([AllowAny])
 def api_login(request):
     username = request.data.get("username", "").strip()
     password = request.data.get("password", "")
@@ -291,6 +293,7 @@ def api_login(request):
     )
 
 
+@csrf_exempt
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def api_logout(request):
@@ -299,8 +302,20 @@ def api_logout(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated, IsStaffUser])
+@permission_classes([AllowAny])
 def portal_bootstrap(request):
+    # Provide explicit diagnostics for unauthenticated/unauthorized requests
+    user = getattr(request, 'user', None)
+    if user is None or not getattr(user, 'is_authenticated', False):
+        return Response(
+            {
+                "error": "Not authenticated",
+                "detail": "Session cookie missing or not sent. Ensure frontend uses credentials: 'include' and that SameSite=None is set for cookies.",
+            },
+            status=401,
+        )
+    if not getattr(user, 'is_staff', False):
+        return Response({"error": "Staff only", "detail": "User is not staff."}, status=403)
     sessions = list(Session.objects.all()[:12])
     active_session = Session.objects.filter(status="ACTIVE").first()
     session = active_session or (sessions[0] if sessions else None)
@@ -317,7 +332,28 @@ def portal_bootstrap(request):
     return Response(payload)
 
 
+@api_view(["GET", "POST"]) 
+@permission_classes([AllowAny])
+def debug_request(request):
+    # Return cookies and a subset of headers to help diagnose why cookies
+    # are not being sent from the browser (SameSite, CORS, host mismatch).
+    headers = {k: v for k, v in request.META.items() if k.startswith("HTTP_")}
+    try:
+        session_items = dict(request.session.items())
+    except Exception:
+        session_items = {}
+    return Response(
+        {
+            "cookies": request.COOKIES,
+            "session": session_items,
+            "headers": headers,
+        }
+    )
+
+
+@csrf_exempt
 @api_view(["POST"])
+@permission_classes([AllowAny])
 def register_student(request):
     student_id = str(request.data.get("student_id", "")).strip()
     name = request.data.get("name", "").strip()
@@ -367,6 +403,7 @@ def register_student(request):
     )
 
 
+@csrf_exempt
 @api_view(["POST"])
 @permission_classes([IsAuthenticated, IsStaffUser])
 def start_session(request):
@@ -459,7 +496,9 @@ def session_dashboard(request):
     )
 
 
+@csrf_exempt
 @api_view(["POST"])
+@permission_classes([AllowAny])
 def generate_qr(request):
     student_id = str(request.data.get("student_id", "")).strip()
     private_key = request.data.get("private_key")
@@ -500,6 +539,7 @@ def generate_qr(request):
     )
 
 
+@csrf_exempt
 @api_view(["POST"])
 @permission_classes([IsAuthenticated, IsStaffUser])
 def verify_attendance(request):

@@ -8,6 +8,7 @@ from .views import (
     list_sessions,
     list_students,
     portal_bootstrap,
+    debug_request,
     register_student,
     session_dashboard,
     session_report,
@@ -26,6 +27,7 @@ urlpatterns = [
     path("students/", list_students, name="list-students"),
     path("dashboard/", session_dashboard, name="session-dashboard"),
     path("portal-bootstrap/", portal_bootstrap, name="portal-bootstrap"),
+    path("debug-request/", debug_request, name="debug-request"),
     path("reports/export/", export_attendance_report, name="export-attendance-report"),
     path("session-report/<str:session_code>/", session_report, name="session-report"),
 ]

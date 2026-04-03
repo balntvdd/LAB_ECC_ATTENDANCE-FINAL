@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 import os
 from pathlib import Path
 import dj_database_url
+from corsheaders.defaults import default_headers
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -32,7 +33,10 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() in ('1', 'true', 'yes')
 
 ALLOWED_HOSTS = [
     host.strip()
-    for host in os.environ.get('DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
+    for host in os.environ.get(
+        'DJANGO_ALLOWED_HOSTS',
+        '127.0.0.1,localhost,ecc-lab-attendancebackend.onrender.com'
+    ).split(',')
     if host.strip()
 ]
 
@@ -59,6 +63,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'attendance_system.middleware.AdminNoCacheAndRedirectMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -147,37 +152,97 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 LOGIN_URL = '/portal/login/'
 LOGIN_REDIRECT_URL = '/portal/'
 
+LOCAL_FRONTEND_ORIGINS = [
+    'http://127.0.0.1:5500',
+    'http://localhost:5500',
+    'http://127.0.0.1:3000',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'http://localhost:5173',
+]
+
 CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get(
         'CORS_ALLOWED_ORIGINS',
-        "http://127.0.0.1:5500,http://localhost:5500,http://127.0.0.1:3000,http://localhost:3000,https://ecc-lab-attendance-frontend.vercel.app"
+        'http://127.0.0.1:5500,http://localhost:5500,http://127.0.0.1:3000,http://localhost:3000,http://127.0.0.1:5173,http://localhost:5173,https://ecc-lab-attendance-frontend.vercel.app'
     ).split(',')
     if origin.strip()
 ]
 
+for origin in LOCAL_FRONTEND_ORIGINS:
+    if origin not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(origin)
+
+CORS_ALLOW_ALL_ORIGINS = os.environ.get('DJANGO_ALLOW_ALL_ORIGINS', 'False').lower() in ('1', 'true', 'yes')
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'x-csrftoken',
+    'x-requested-with',
+]
+CORS_EXPOSE_HEADERS = [
+    'Content-Type',
+    'Access-Control-Allow-Origin',
+    'Access-Control-Allow-Credentials',   #asdsdasdasdasasdasds123
+]
+
+# For cross-origin requests (frontend on port 5500, backend on port 8000):
+# Allow cross-site cookies for local development so `fetch(..., credentials: 'include')`
+# can set and send the session and CSRF cookies. In production these should be
+# tightened (SameSite='Lax' or 'Strict' and Secure=True).
+# When using cross-origin frontend during development, browsers require
+# SameSite=None for cookies to be sent with cross-site requests.
+#SESSION_COOKIE_SAMESITE = 'None'
+#SESSION_COOKIE_SECURE = not DEBUG  # False in DEBUG (localhost), True in production (HTTPS)
+#CSRF_COOKIE_SAMESITE = 'None'
+#CSRF_COOKIE_SECURE = not DEBUG
+
 SESSION_COOKIE_SAMESITE = 'None'
-SESSION_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SAMESITE = 'None'
-CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = True
+
+# Add this after DEBUG is set
+if DEBUG:
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    CSRF_COOKIE_SAMESITE = 'Lax'
+else:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SAMESITE = 'None'
+    CSRF_COOKIE_SAMESITE = 'None'
+
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get(
         'CSRF_TRUSTED_ORIGINS',
-        "http://127.0.0.1:5500,http://localhost:5500,http://127.0.0.1:3000,http://localhost:3000,https://ecc-lab-attendance-frontend.vercel.app"
+        'http://127.0.0.1:5500,http://localhost:5500,http://127.0.0.1:3000,http://localhost:3000,https://ecc-lab-attendance-frontend.vercel.app'
     ).split(',')
     if origin.strip()
 ]
+for origin in LOCAL_FRONTEND_ORIGINS:
+    if origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(origin)
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
+# REST Framework authentication configuration
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+    ],
+}
 
-
-   
-
-
-
-
-
-
+# Session configuration for API
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+SESSION_COOKIE_PATH = '/'   
+SESSION_COOKIE_DOMAIN = None
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_AGE = 1209600  # 2 weeks in seconds
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+SESSION_SAVE_EVERY_REQUEST = True
