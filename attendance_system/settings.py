@@ -35,7 +35,7 @@ ALLOWED_HOSTS = [
     host.strip()
     for host in os.environ.get(
         'DJANGO_ALLOWED_HOSTS',
-        '127.0.0.1,localhost,ecc-lab-attendancebackend.onrender.com'
+        '127.0.0.1,localhost,lab-ecc-attendance-final.onrender.com'
     ).split(',')
     if host.strip()
 ]
