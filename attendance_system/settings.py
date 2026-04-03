@@ -218,7 +218,7 @@ CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get(
         'CSRF_TRUSTED_ORIGINS',
-        'http://127.0.0.1:5500,http://localhost:5500,http://127.0.0.1:3000,http://localhost:3000,https://ecc-laboratory-attendance.vercel.app'
+        'http://127.0.0.1:5500,http://localhost:5500,http://127.0.0.1:3000,http://localhost:3000,https://ecc-laboratory-attendance.vercel.app,https://lab-ecc-attendance-final.onrender.com'
     ).split(',')
     if origin.strip()
 ]
